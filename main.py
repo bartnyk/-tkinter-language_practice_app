@@ -1,125 +1,91 @@
 from tkinter import *
-from tkinter import messagebox
 import random
-import pyperclip
-import json
 
-ERROR_COLOR = "#b82828"
-BG_COLOR = "#fce8e9"
-LETTERS = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
-NUMBERS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
-SYMBOLS = ['!', '#', '$', '%', '&', '(', ')', '*', '+']
+with open("data/words.csv", "r", encoding='utf-8') as data:
+    rows = data.read().split("\n")
+    WORDS = {var[0]: var[1] for var in [x.split(",") for x in rows]}
 
-# ---------------------------- PASSWORD GENERATOR ------------------------------- #
+BACKGROUND_COLOR = "#B1DDC6"
 
-def generate_password():
-    nr_letters = random.randint(8, 10)
-    nr_symbols = random.randint(2, 4)
-    nr_numbers = random.randint(2, 4)
+FROM = None
+TO = None
 
-    password_list = [random.choice(LETTERS) for x in range(nr_letters)] + [random.choice(NUMBERS) for x in range(nr_numbers)] + [random.choice(SYMBOLS) for x in range(nr_symbols)]
-    random.shuffle(password_list)
-    password = "".join(password_list)
+# ---------- BACK-END ----------#
 
-    entry_3.delete(0, END)
-    entry_3.insert(END, password)
+def main():
+    def change_card():
+        card_canvas.itemconfig(current_language, text=TO, fill="white")
+        card_canvas.itemconfig(to_translate, text=key, fill="white")
+        card_canvas.itemconfig(card, image=back_side)
 
-    pyperclip.copy(password)
+    def change_word(result):
+        if result == "right":
+            del WORDS[key]
+        return main()
 
-# ---------------------------- SAVE PASSWORD ------------------------------- #
+    key = random.choice(list(WORDS.keys()))
+    word = WORDS[key]
+    card_canvas = Canvas(width=800, height=526, bg=BACKGROUND_COLOR, highlightthickness=0)
+    card = card_canvas.create_image(400, 263, image=front_side)
+    card_canvas.grid(row=0, columnspan=2)
+    current_language = card_canvas.create_text(400, 130, text=FROM, fill="black", font=("Arial", 26, "bold"))
+    to_translate = card_canvas.create_text(400, 330, text=word, fill="black", font=("Arial", 28, "italic bold"))
 
-def get_data():
-    website = entry_1.get()
-    user = entry_2.get()
-    password = entry_3.get()
-    json_dict = {website: {"Email/Username": user, "password": password,}}
+    button_wrong = Button(height=100, width=100, image=wrong, bg=BACKGROUND_COLOR, highlightthickness=0, command=lambda: change_word("wrong"))
+    button_right = Button(height=100, width=100, bg=BACKGROUND_COLOR, image=right, highlightthickness=0, command=lambda: change_word("right"))
+    button_wrong.grid(row=1, column=0, pady=10)
+    button_right.grid(row=1, column=1, pady=10)
 
-    def write_data():
-        try:
-            with open("data.json", "r") as file:
-                data = json.load(file)
-                if website in data:
-                    if messagebox.askokcancel(title="Account already exists", message=f"Website {website} already exists on database.\nDo you want to overwrite it?"):
-                        data.update(json_dict)
-                    else:
-                        raise KeyError
-                else:
-                    data.update(json_dict)
-            with open("data.json", "w") as file:
-                json.dump(data, file, indent=4)
-        except KeyError:
-            print("XD")
-        except:
-            with open("data.json", "w") as file:
-                json.dump(json_dict, file, indent=4)
-        finally:
-            entry_1.delete(0, END)
-            entry_3.delete(0, END)
-
-    if website == "" or user == "" or password == "":
-        error_label.config(text="Wrong/empty field", font=("Arial", 12, "bold"), fg=ERROR_COLOR)
-    else:
-        if messagebox.askokcancel(title="Confirm data",
-                                  message=f"Are those details correct?\nWebsite: {website}\nEmail/Username: {user}\nPassword: {password}"):
-            return write_data()
-
-# ---------------------------- SEARCH WEBSITE ------------------------------- #
-
-def search_website():
-    website = entry_1.get()
-    if website == "":
-        error_label.config(text="Type website name", font=("Arial", 12, "bold"), fg=ERROR_COLOR)
-    try:
-        with open("data.json", "r") as file:
-            data = json.load(file)
-            info = data[website]
-            output_message = "\n".join([f"{var}: {info[var]}" for var in info])
-            print(output_message)
-            messagebox.showinfo(title=f"Information about {website}", message=output_message)
-    except FileNotFoundError:
-        error_label.config(text="You don\'t have any passwords yet.", font=("Arial", 12, "bold"), fg=ERROR_COLOR)
+    window.after(3000, change_card)
 
 
-# ---------------------------- UI SETUP ------------------------------- #
+def choice():
+    def change_language(fr, to):
+        global FROM, TO, WORDS
+        FROM = fr
+        TO = to
+        if FROM == "English":
+            WORDS = {value: key for (key, value) in WORDS.items()}
+        choice_canvas.delete("all")
+        return main()
+    choice_canvas = Canvas(width=800, height=526, highlightthickness=0, bg=BACKGROUND_COLOR)
+    pl_en_button = Button(image=right, command=lambda: change_language("Polish", "English"), bg=BACKGROUND_COLOR, highlightthickness=0)
+    en_pl_button = Button(image=right, command=lambda: change_language("English", "Polish"))
+    choice_canvas.create_window(180, 163, window=pl_en_button)
+    choice_canvas.create_window(180, 343, window=en_pl_button)
+    choice_canvas.create_text(440, 163, text="from Polish to English", font=("Arial", 20, "italic bold"))
+    choice_canvas.create_text(440, 343, text="from English to Polish", font=("Arial", 20, "italic bold "))
+    choice_canvas.grid(row=0, columnspan=2)
+
+def on_closing():
+    global WORDS
+    if FROM == "English":
+        WORDS = {value: key for (key, value) in WORDS.items()}
+    to_file = [f"{key}:{WORDS[key]}" for key in WORDS.keys()]
+    print(to_file)
+    with open("data/words.csv", "w", encoding='utf-8') as file:
+        #file.writelines([f"{line}\n" for line in to_file])
+        for line in to_file:
+            if line != to_file[-1]:
+                file.write(f"{line.replace(':', ',')}\n")
+            else:
+                file.write(f"{line.replace(':', ',')}")
+    exit()
+
+# ---------- UI ----------#
 
 window = Tk()
-window.config(padx=80, pady=80, bg = BG_COLOR)
-window.title("Password Manager")
+window.title("Language practice")
+window.config(bg=BACKGROUND_COLOR, pady=80, padx=80)
 window.resizable(False, False)
 
-canvas = Canvas(width=300, height=200, bg=BG_COLOR, highlightthickness=0)
-logo = PhotoImage(file="logo.png")
-canvas.create_image(150, 100, image=logo)
-canvas.grid(row=0, columnspan=3)
+front_side = PhotoImage(file="images/card_front.png")
+back_side = PhotoImage(file="images/card_back.png")
+right = PhotoImage(file="images/right.png")
+wrong = PhotoImage(file="images/wrong.png")
 
+choice()
 
-
-label_1 = Label(text = "Website:", bg=BG_COLOR, font=("Arial", 12))
-entry_1 = Entry(font=("Arial", 12), width=22)
-entry_1.focus()
-search_button = Button(text = "Search", command=search_website, font=("Arial", 12), width=16)
-label_1.grid(row=1, column=0)
-entry_1.grid(row=1, column=1)
-search_button.grid(row=1, column=2, sticky="E")
-
-label_2 = Label(text = "Email/Username:", bg=BG_COLOR, pady=6, font=("Arial", 12))
-entry_2 = Entry(width=40, font=("Arial", 12))
-entry_2.insert(END, "jakub@bartnyk.pl")
-label_2.grid(row=2, column=0)
-entry_2.grid(row=2,column=1, columnspan=2)
-
-label_3 = Label(text = "Password:", bg=BG_COLOR, font=("Arial", 12))
-entry_3 = Entry(font=("Arial", 12), width=22)
-label_3.grid(row=3, column=0)
-entry_3.grid(row=3, column=1, pady=(0,6))
-
-generate_button = Button(text="Generate Password", font=("Arial", 12), command=generate_password)
-generate_button.grid(row=3, column=2, pady=(0,6), sticky="E")
-
-confirm_button = Button(text="Add", font=("Arial", 12), width=40, command=get_data)
-confirm_button.grid(row=4, column=1, columnspan=2)
-
-error_label = Label(text="", bg=BG_COLOR, pady=6)
-error_label.grid(row=5, column=1, columnspan=2)
+window.protocol("WM_DELETE_WINDOW", on_closing)
 
 window.mainloop()
